@@ -1,0 +1,108 @@
+<!-- templates/admin_login.html -->
+{% extends "base.html" %}
+
+{% block title %}Admin Login - Student Election System{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-header">
+        <h1>👨‍💼 Administrator Login</h1>
+        <p>Access your admin dashboard</p>
+    </div>
+    
+    <div class="alert alert-error" id="errorAlert" style="display: none;">
+        Error message will appear here
+    </div>
+    
+    <div class="alert alert-success" id="successAlert" style="display: none;">
+        Success message will appear here
+    </div>
+    
+    <form id="adminLoginForm">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" placeholder="Enter your username" autocomplete="off" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="off" required>
+        </div>
+        
+        <button type="submit" class="login-btn" id="loginButton">
+            <span class="loading-spinner" style="display: none;"></span>
+            Login
+        </button>
+    </form>
+    
+    <a href="/" style="color: #8B4513;">← Back to Home</a>
+    
+    <div class="system-info">
+        <h3>🔐 Administrator Access</h3>
+        <p>Use your administrator credentials to access the election management system. Ensure you have proper authorization before proceeding.</p>
+    </div>
+</div>
+
+<script>
+document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const button = document.getElementById('loginButton');
+    const spinner = button.querySelector('.loading-spinner');
+    const errorAlert = document.getElementById('errorAlert');
+    const successAlert = document.getElementById('successAlert');
+    
+    // Hide any existing alerts
+    errorAlert.style.display = 'none';
+    successAlert.style.display = 'none';
+    
+    // Show loading state
+    button.disabled = true;
+    spinner.style.display = 'inline-block';
+    button.innerHTML = '<span class="loading-spinner"></span>Logging in...';
+    
+    const formData = new FormData(e.target);
+    const data = {
+        username: formData.get('username'),
+        password: formData.get('password')
+    };
+    
+    try {
+        const response = await fetch('/login/admin', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        // Reset button
+        button.disabled = false;
+        spinner.style.display = 'none';
+        button.innerHTML = 'Login';
+        
+        if (result.success) {
+            successAlert.textContent = 'Login successful! Redirecting to admin dashboard...';
+            successAlert.style.display = 'block';
+            
+            setTimeout(() => {
+                window.location.href = '/admin_dashboard';
+            }, 1500);
+        } else {
+            errorAlert.textContent = result.message || 'Login failed';
+            errorAlert.style.display = 'block';
+        }
+    } catch (error) {
+        // Reset button on error
+        button.disabled = false;
+        spinner.style.display = 'none';
+        button.innerHTML = 'Login';
+        
+        errorAlert.textContent = 'Login error: ' + error.message;
+        errorAlert.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,212 @@
+<!-- templates/student_login.html -->
+{% extends "base.html" %} {% block title %}Student Login - Student Election
+System{% endblock %} {% block content %}
+
+<div class="login-container">
+  <div class="login-header">
+    <h1>🎓 Student Login</h1>
+    <p>Access your voting dashboard</p>
+  </div>
+
+  <div id="alertMessage" class="alert" style="display: none"></div>
+
+  <form id="loginForm">
+    <div class="form-group">
+      <label for="studentId">Student ID</label>
+      <input
+        type="text"
+        id="studentId"
+        name="studentId"
+        placeholder="Enter your student ID"
+        autocomplete="off" required/>
+    </div>
+
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input
+        type="password"
+        id="password"
+        name="password"
+        placeholder="Enter your password"
+        autocomplete="off" required
+      />
+    </div>
+
+    <button type="submit" id="loginBtn" class="login-btn">
+      <span id="loginBtnText">Login</span>
+    </button>
+  </form>
+
+  <a href="#" class="forgot-password" onclick="showForgotPassword()"
+    >Forgot your password?</a
+  >
+  <a href="/" style="color: #8b4513">← Back to Home</a>
+  <div class="system-info">
+    <h3>🗳️ Election Information</h3>
+    <p>
+      Use your student credentials to access the voting system. Make sure you
+      have your official student ID ready.
+    </p>
+  </div>
+</div>
+
+<script>
+  // Replace the JavaScript section in student_login.html with this:
+  document.addEventListener("DOMContentLoaded", function () {
+    const loginForm = document.getElementById("loginForm");
+    const loginBtn = document.getElementById("loginBtn");
+    const loginBtnText = document.getElementById("loginBtnText");
+    const alertMessage = document.getElementById("alertMessage");
+
+    let isSubmitting = false; // Prevent multiple submissions
+
+    // Handle form submission
+    loginForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      // Prevent multiple submissions
+      if (isSubmitting) {
+        console.log("Already submitting, ignoring duplicate submission");
+        return;
+      }
+
+      const studentId = document.getElementById("studentId").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      console.log("Login attempt:", {
+        studentId: studentId,
+        passwordLength: password.length,
+      });
+
+      if (!studentId || !password) {
+        showAlert("Please fill in all fields", "error");
+        return;
+      }
+
+      // Set submitting flag and show loading state
+      isSubmitting = true;
+      showLoading(true);
+      hideAlert();
+
+      try {
+        const response = await fetch("/api/student_login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            student_id: studentId,
+            password: password,
+          }),
+          credentials: "include",
+        });
+
+        console.log("Response status:", response.status);
+        const result = await response.json();
+        console.log("Response data:", result);
+
+        if (response.ok && result.token) {
+          console.log("✅ Login success, preparing to redirect");
+          sessionStorage.setItem("authToken", result.token);
+          sessionStorage.setItem("studentName", result.student_name || "");
+          sessionStorage.setItem("hasVoted", result.has_voted || false);
+
+          showAlert("Login successful! Redirecting...", "success");
+
+          setTimeout(() => {
+            console.log("➡️ Redirecting to dashboard...");
+            window.location.href = "/student_dashboard";
+          }, 1000);
+        } else {
+          console.error("❌ Login failed or no token in response");
+          showAlert(result.error || "Invalid credentials", "error");
+          isSubmitting = false;
+        }
+      } catch (error) {
+        console.error("❌ Network error during login:", error);
+        showAlert("Connection error. Please try again.", "error");
+        isSubmitting = false;
+      }
+    });
+
+    // Show loading state
+    function showLoading(loading) {
+      if (loading) {
+        loginBtn.disabled = true;
+        loginBtnText.innerHTML =
+          '<div class="loading-spinner"></div>Logging in...';
+      } else {
+        loginBtn.disabled = false;
+        loginBtnText.textContent = "Login";
+      }
+    }
+
+    function showAlert(message, type) {
+      const alertMessage = document.getElementById("alertMessage");
+      if (!alertMessage) {
+        console.warn("⚠️ alertMessage element not found");
+        return;
+      }
+
+      alertMessage.textContent = message;
+      alertMessage.className = `alert alert-${type}`;
+      alertMessage.style.display = "block";
+    }
+
+    function hideAlert() {
+      const alertMessage = document.getElementById("alertMessage");
+      if (alertMessage) {
+        alertMessage.style.display = "none";
+      }
+    }
+
+    // Handle forgot password
+    function showForgotPassword() {
+      alert(
+        "Please contact your school administrator to reset your password.\n\nEmail: admin@school.edu\nPhone: (555) 123-4567"
+      );
+    }
+
+    // Auto-focus on student ID field
+    document.getElementById("studentId").focus();
+
+    // Handle Enter key on password field
+    document
+      .getElementById("password")
+      .addEventListener("keypress", function (e) {
+        if (e.key === "Enter" && !isSubmitting) {
+          loginForm.dispatchEvent(new Event("submit"));
+        }
+      });
+
+    // Clear alerts when user starts typing
+    document.getElementById("studentId").addEventListener("input", function () {
+      hideAlert();
+      isSubmitting = false; // Reset flag when user starts typing again
+    });
+
+    document.getElementById("password").addEventListener("input", function () {
+      hideAlert();
+      isSubmitting = false; // Reset flag when user starts typing again
+    });
+
+    // Add debug function (remove in production)
+    function debugLogin() {
+      const studentId = document.getElementById("studentId").value.trim();
+      if (studentId) {
+        fetch(`/api/debug_student/${studentId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Debug info:", data);
+            alert(
+              "Debug info logged to console. Check browser developer tools."
+            );
+          })
+          .catch((error) => console.error("Debug error:", error));
+      } else {
+        alert("Please enter a student ID first.");
+      }
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,544 @@
+<!-- templates/voting.html -->
+{% extends "base.html" %}
+
+{% block title %}Voting - Student Election System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header">
+        <h1>🗳️ Cast Your Vote</h1>
+        <div style="display: flex; justify-content: center; gap: 20px; margin-top: 20px;">
+            <a href="/student_dashboard" class="btn btn-danger">← Back to Dashboard</a>
+        </div>
+        <div id="alertMessage" class="alert" style="display: none"></div>
+    </div>
+    
+    <div id="votingInterface">
+        <div class="card">
+            <div id="electionTitle" style="text-align: center; margin-bottom: 30px;">
+                <!-- Election title will be loaded here -->
+            </div>
+            
+            <div id="votingProgress" style="margin-bottom: 30px;">
+                <div style="background: #f0f0f0; border-radius: 10px; height: 10px; margin-bottom: 10px;">
+                    <div id="progressBar" style="background: linear-gradient(45deg, #DAA520, #B8860B); height: 100%; border-radius: 10px; width: 0%; transition: width 0.3s ease;"></div>
+                </div>
+                <p style="text-align: center; color: #666;">
+                    Position <span id="currentPosition">1</span> of <span id="totalPositions">1</span>
+                </p>
+            </div>
+            
+            <div id="positionVoting">
+                <!-- Position voting will be loaded here -->
+            </div>
+            
+            <div id="votingControls" style="text-align: center; margin-top: 30px;">
+                <button id="prevBtn" class="btn" style="margin-right: 15px; display: none;" onclick="previousPosition()">
+                    ← Previous
+                </button>
+                <button id="nextBtn" class="btn" style="margin-left: 15px;" onclick="nextPosition()">
+                    Next →
+                </button>
+                <button id="submitBtn" class="btn" style="margin-left: 15px; display: none;" onclick="showVoteSummary()">
+                    Review Votes
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="voteSummaryModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="hideModal('voteSummaryModal')">&times;</span>
+            <h3 style="color: #8B4513; margin-bottom: 20px;">📋 Review Your Votes</h3>
+            <div id="voteSummaryContent">
+                <!-- Vote summary will be loaded here -->
+            </div>
+            <div style="text-align: center; margin-top: 30px;">
+                <button onclick="hideModal('voteSummaryModal')" class="btn btn-danger" style="margin-right: 15px;">
+                    ← Back to Edit
+                </button>
+                <button onclick="submitVotes()" class="btn" style="background: linear-gradient(45deg, #28a745, #20c997);">
+                    Submit Final Vote ✓
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let positions = [];
+let candidates = [];
+let currentPositionIndex = 0;
+let selectedVotes = {};
+
+
+
+// Check authentication status when page loads
+async function checkAuthStatus() {
+    try {
+        const response = await fetch('/api/check-auth');
+        const authData = await response.json();
+        
+        console.log('Auth status:', authData);
+        
+        if (!authData.authenticated || authData.user_type !== 'student') {
+            console.log('Student not authenticated, redirecting to login');
+            // Clear any stored session data
+            sessionStorage.clear();
+            window.location.href = '/student_login';
+            return false;
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error checking auth status:', error);
+        window.location.href = '/student_login';
+        return false;
+    }
+}
+
+// Enhanced loadStudentInfo function with better error handling
+async function loadStudentInfo() {
+    try {
+        // First check if we're authenticated
+        const isAuthenticated = await checkAuthStatus();
+        if (!isAuthenticated) {
+            return;
+        }
+        
+        const response = await fetch('/api/student-info');
+        const student = await response.json();
+        
+        console.log('Student info response:', student);
+        
+        if (response.ok && student.name) {
+            const infoDiv = document.getElementById('studentInfo');
+            infoDiv.innerHTML = `
+                <div style="background: rgba(218, 165, 32, 0.1); border-radius: 10px; padding: 25px; margin: 20px 0;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; text-align: left;">
+                        <div>
+                            <strong style="color: #8B4513;">Name:</strong><br>
+                            <span style="font-size: 18px;">${student.name}</span>
+                        </div>
+                        <div>
+                            <strong style="color: #8B4513;">Student ID:</strong><br>
+                            <span style="font-size: 18px;">${student.student_id}</span>
+                        </div>
+                        <div>
+                            <strong style="color: #8B4513;">Age:</strong><br>
+                            <span style="font-size: 18px;">${student.age} years old</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const voteSection = document.getElementById('voteSection');
+            if (student.has_voted) {
+                document.getElementById('welcomeSection').style.display = 'none';
+                document.getElementById('votingCompleted').style.display = 'block';
+            } else {
+                voteSection.innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="font-size: 3em; margin-bottom: 15px;">🗳️</div>
+                        <h3 style="color: #D2691E; margin-bottom: 15px;">Ready to Vote?</h3>
+                        <p style="margin-bottom: 20px; color: #666;">Cast your vote for the student government positions</p>
+                        <a href="/voting" class="btn" style="font-size: 18px; padding: 15px 30px;">
+                            Vote Now
+                        </a>
+                    </div>
+                `;
+            }
+        } else if (response.status === 401) {
+            // Unauthorized - redirect to login
+            console.log('Unauthorized access, redirecting to login');
+            window.location.href = '/student_login';
+        } else {
+            showAlert(student.error || 'Error loading student information', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading student info:', error);
+        showAlert('Error: ' + error.message, 'error');
+        // If there's a network error, might be a session issue
+        setTimeout(() => {
+            window.location.href = '/student_login';
+        }, 3000);
+    }
+}
+
+// Enhanced alert function
+function showAlert(message, type) {
+    console.log(`${type.toUpperCase()}: ${message}`);
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type}`;
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 5px;
+        z-index: 1000;
+        max-width: 300px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    `;
+    
+    if (type === 'success') {
+        alertDiv.style.backgroundColor = '#d4edda';
+        alertDiv.style.color = '#155724';
+        alertDiv.style.border = '1px solid #c3e6cb';
+    } else {
+        alertDiv.style.backgroundColor = '#f8d7da';
+        alertDiv.style.color = '#721c24';
+        alertDiv.style.border = '1px solid #f5c6cb';
+    }
+    
+    alertDiv.textContent = message;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// Load voting data
+async function loadVotingData() {
+    try {
+        const [positionsResponse, candidatesResponse, settingsResponse] = await Promise.all([
+            fetch('/api/positions'),
+            fetch('/api/candidates'),
+            fetch('/api/election-settings')
+        ]);
+        
+        positions = await positionsResponse.json();
+        candidates = await candidatesResponse.json();
+        const settings = await settingsResponse.json();
+        
+        // Sort positions by order
+        positions.sort((a, b) => a.order - b.order);
+        
+        // Initialize selected votes
+        positions.forEach(position => {
+            selectedVotes[position.id] = null;
+        });
+        
+        // Set election title
+        document.getElementById('electionTitle').innerHTML = `
+            <h2 style="color: #8B4513;">${settings.title || 'Student Government Election'}</h2>
+            <p style="color: #666;">Select one candidate for each position</p>
+        `;
+        
+        // Update total positions
+        document.getElementById('totalPositions').textContent = positions.length;
+        
+        // Load first position
+        loadPosition(0);
+        
+    } catch (error) {
+        showAlert('Error loading voting data: ' + error.message, 'error');
+    }
+}
+
+// Load specific position
+function loadPosition(index) {
+    if (index < 0 || index >= positions.length) return;
+    
+    currentPositionIndex = index;
+    const position = positions[index];
+    
+    // Update progress
+    const progress = ((index + 1) / positions.length) * 100;
+    document.getElementById('progressBar').style.width = progress + '%';
+    document.getElementById('currentPosition').textContent = index + 1;
+    
+    // Get candidates for this position
+    const positionCandidates = candidates.filter(c => c.position_id === position.id);
+    
+    // Build voting interface
+    let candidatesHTML = `
+        <h3 style="color: #8B4513; text-align: center; margin-bottom: 25px;">
+            ${position.name}
+        </h3>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Select one candidate for this position:
+        </p>
+    `;
+    
+    if (positionCandidates.length === 0) {
+        candidatesHTML += `
+            <div style="text-align: center; padding: 40px; color: #666;">
+                <div style="font-size: 3em; margin-bottom: 15px;">📭</div>
+                <p>No candidates for this position</p>
+            </div>
+        `;
+    } else {
+        positionCandidates.forEach(candidate => {
+            const isSelected = selectedVotes[position.id] === candidate.id;
+            candidatesHTML += `
+                <div class="candidate-card ${isSelected ? 'selected' : ''}" 
+                     onclick="selectCandidate('${position.id}', '${candidate.id}')">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h4 style="color: #8B4513; margin-bottom: 10px;">${candidate.name}</h4>
+                            ${candidate.platform ? `<p style="color: #666;">${candidate.platform}</p>` : ''}
+                        </div>
+                        <div style="font-size: 24px;">
+                            ${isSelected ? '✅' : '⚪'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    document.getElementById('positionVoting').innerHTML = candidatesHTML;
+    
+    // Update button visibility
+    document.getElementById('prevBtn').style.display = index > 0 ? 'inline-block' : 'none';
+    document.getElementById('nextBtn').style.display = index < positions.length - 1 ? 'inline-block' : 'none';
+    document.getElementById('submitBtn').style.display = index === positions.length - 1 ? 'inline-block' : 'none';
+}
+
+// Select candidate
+function selectCandidate(positionId, candidateId) {
+    selectedVotes[positionId] = candidateId;
+    
+    // Update UI
+    document.querySelectorAll('.candidate-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    event.currentTarget.classList.add('selected');
+    
+    // Update the checkmark
+    document.querySelectorAll('.candidate-card').forEach(card => {
+        const checkmark = card.querySelector('div:last-child');
+        if (card.classList.contains('selected')) {
+            checkmark.textContent = '✅';
+        } else {
+            checkmark.textContent = '⚪';
+        }
+    });
+}
+
+// Navigation functions
+function previousPosition() {
+    if (currentPositionIndex > 0) {
+        loadPosition(currentPositionIndex - 1);
+    }
+}
+
+function nextPosition() {
+    if (currentPositionIndex < positions.length - 1) {
+        loadPosition(currentPositionIndex + 1);
+    }
+}
+
+// Show vote summary - only show positions with candidates
+function showVoteSummary() {
+    let summaryHTML = '';
+    
+    // Filter positions to only show those with candidates
+    const activePositions = positions.filter(position => {
+        const positionCandidates = candidates.filter(c => c.position_id === position.id);
+        return positionCandidates.length > 0;
+    });
+    
+    activePositions.forEach(position => {
+        const selectedCandidateId = selectedVotes[position.id];
+        const selectedCandidate = candidates.find(c => c.id === selectedCandidateId);
+        
+        summaryHTML += `
+            <div style="border: 2px solid #DAA520; border-radius: 10px; padding: 20px; margin-bottom: 15px;">
+                <h4 style="color: #8B4513; margin-bottom: 10px;">${position.name}</h4>
+                <p style="color: #666; margin: 0;">
+                    ${selectedCandidate ? `Selected: <strong>${selectedCandidate.name}</strong>` : 'No candidate selected'}
+                </p>
+            </div>
+        `;
+    });
+    
+    document.getElementById('voteSummaryContent').innerHTML = summaryHTML;
+    showModal('voteSummaryModal');
+}
+
+async function submitVotes() {
+    try {
+        // Debug logs to confirm data availability
+        console.log('Selected votes:', selectedVotes);
+        console.log('Positions:', positions);
+
+        // Check if selectedVotes or positions are undefined
+        if (!selectedVotes || !positions) {
+            showAlert('Voting data is not properly loaded. Please refresh the page.', 'error');
+            return;
+        }
+
+        // FIX: Filter out positions that don't have candidates or are disabled
+        const activePositions = positions.filter(position => {
+            const positionCandidates = candidates.filter(c => c.position_id === position.id);
+            return positionCandidates.length > 0; // Only count positions that have candidates
+        });
+
+        // Check for unvoted positions - use activePositions instead of all positions
+        const unvotedPositions = activePositions.filter(p => !selectedVotes[p.id]);
+        
+        console.log('Active positions:', activePositions.length);
+        console.log('Total positions:', positions.length);
+        console.log('Unvoted positions:', unvotedPositions.length);
+        
+        if (unvotedPositions.length > 0) {
+            const positionNames = unvotedPositions.map(p => p.name).join(', ');
+            const confirmMessage = `You haven't voted for: ${positionNames}. Do you still want to submit your vote?`;
+            if (!confirm(confirmMessage)) return;
+        }
+
+        // Filter out null votes and prepare the vote data
+        const validVotes = {};
+        Object.keys(selectedVotes).forEach(positionId => {
+            if (selectedVotes[positionId] !== null) {
+                validVotes[positionId] = selectedVotes[positionId];
+            }
+        });
+
+        // Prepare the vote data for backend (send only candidate IDs)
+        const voteData = { 
+            votes: Object.values(validVotes) // Send array of candidate IDs
+        };
+
+        console.log('Submitting vote data:', voteData);
+
+        // Find the submit button in the modal
+        const submitButtons = document.querySelectorAll('button');
+        let submitButton = null;
+        
+        submitButtons.forEach(btn => {
+            if (btn.textContent.includes('Submit Final Vote')) {
+                submitButton = btn;
+            }
+        });
+
+        if (submitButton) {
+            const originalText = submitButton.textContent;
+            submitButton.textContent = 'Submitting...';
+            submitButton.disabled = true;
+        }
+
+        // Submit vote to backend
+        const response = await fetch('/api/submit-vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(voteData),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            hideModal('voteSummaryModal');
+            showAlert('Your vote has been submitted successfully!', 'success');
+            
+            // Show a loading message while redirecting
+            document.body.innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column;">
+                    <div style="font-size: 4em; margin-bottom: 20px;">✅</div>
+                    <h2 style="color: #8B4513; margin-bottom: 15px;">Vote Submitted Successfully!</h2>
+                    <p style="color: #666;">Redirecting to dashboard...</p>
+                </div>
+            `;
+            
+            // Redirect after a short delay
+            setTimeout(() => {
+                window.location.href = '/student_dashboard';
+            }, 1500);
+        } else {
+            showAlert(result.error || 'Failed to submit your vote. Please try again.', 'error');
+            if (submitButton) {
+                submitButton.textContent = 'Submit Final Vote ✓';
+                submitButton.disabled = false;
+            }
+        }
+    } catch (error) {
+        console.error('Error submitting vote:', error);
+        showAlert('An unexpected error occurred. Please try again later.', 'error');
+
+        // Reset button state
+        const submitButtons = document.querySelectorAll('button');
+        submitButtons.forEach(btn => {
+            if (btn.textContent.includes('Submitting')) {
+                btn.textContent = 'Submit Final Vote ✓';
+                btn.disabled = false;
+            }
+        });
+    }
+}
+
+
+
+
+// Modal functions
+function showModal(modalId) {
+    document.getElementById(modalId).style.display = 'block';
+}
+
+function hideModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+
+// Alert function
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type}`;
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 5px;
+        z-index: 1000;
+        max-width: 300px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    `;
+    
+    if (type === 'success') {
+        alertDiv.style.backgroundColor = '#d4edda';
+        alertDiv.style.color = '#155724';
+        alertDiv.style.border = '1px solid #c3e6cb';
+    } else {
+        alertDiv.style.backgroundColor = '#f8d7da';
+        alertDiv.style.color = '#721c24';
+        alertDiv.style.border = '1px solid #f5c6cb';
+    }
+    
+    alertDiv.textContent = message;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+// Initialize voting when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadVotingData();
+});
+
+// Prevent accidental page refresh
+window.addEventListener('beforeunload', function(e) {
+    if (Object.values(selectedVotes).some(vote => vote !== null)) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,373 @@
+<!-- templates/index.html -->
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .homepage-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        animation: fadeInUp 0.8s ease-out;
+    }
+
+    .hero-section {
+        text-align: center;
+        margin-bottom: 50px;
+        padding: 40px 20px;
+    }
+
+    .hero-section h1 {
+        font-size: 3.5em;
+        background: linear-gradient(45deg, #ffb300, #f2f2f2, #ffb300);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 20px;
+        text-shadow: none;
+        animation: glow 3s ease-in-out infinite alternate;
+    }
+
+    .hero-section p {
+        font-size: 2.0em;
+        background: linear-gradient(45deg, #ffb300, #f2f2f2, #ffb300);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 20px;
+        text-shadow: none;
+        animation: glow 3s ease-in-out infinite alternate;
+    }
+    
+
+    .portal-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 25px;
+        box-shadow: 0 20px 60px rgba(139, 69, 19, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(15px);
+        padding: 50px 40px;
+        max-width: 3000px;
+        margin: 30px 0;
+        position: relative;
+        overflow: hidden;
+        animation: slideInUp 0.8s ease-out 0.2s both;
+    }
+
+    .portal-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(218, 165, 32, 0.1), transparent);
+        transition: left 0.8s;
+    }
+
+    .portal-card:hover::before {
+        left: 100%;
+    }
+
+    .welcome-title {
+        color: #060301;
+        font-size: 2.2em;
+        margin-bottom: 40px;
+        text-align: center;
+        position: relative;
+    }
+
+    .welcome-title::after {
+        content: '';
+        display: block;
+        width: 100px;
+        height: 4px;
+        background: linear-gradient(45deg, #42c8b2, #0c0907);
+        margin: 15px auto;
+        border-radius: 2px;
+    }
+
+    .access-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 40px;
+        margin-top: 40px;
+    }
+
+    .access-card {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(248, 249, 250, 0.9));
+        border: 2px solid transparent;
+        border-radius: 20px;
+        padding: 35px 25px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 8px 25px rgba(139, 69, 19, 0.15);
+    }
+
+    .access-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #DAA520, #D2691E);
+        opacity: 0;
+        transition: opacity 0.4s ease;
+        z-index: -1;
+    }
+
+    .access-card:hover {
+        transform: translateY(-10px) scale(1.02);
+        border-color: #DAA520;
+        box-shadow: 0 20px 40px rgba(218, 165, 32, 0.3);
+    }
+
+    .access-card:hover::before {
+        opacity: 0.05;
+    }
+
+    .access-icon {
+        font-size: 5em;
+        margin-bottom: 20px;
+        display: block;
+        animation: bounce 2s infinite;
+        transition: transform 0.3s ease;
+    }
+
+    .access-card:hover .access-icon {
+        transform: scale(1.1);
+        animation-play-state: paused;
+    }
+
+    .access-card h3 {
+        color: #8B4513;
+        font-size: 1.8em;
+        margin-bottom: 15px;
+        font-weight: 700;
+    }
+
+    .access-card p {
+        color: #666;
+        font-size: 1.1em;
+        margin-bottom: 25px;
+        line-height: 1.6;
+    }
+
+    .enhanced-btn {
+        background: linear-gradient(45deg, #DAA520, #B8860B);
+        color: white;
+        border: none;
+        padding: 15px 35px;
+        border-radius: 50px;
+        cursor: pointer;
+        font-size: 1.1em;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(218, 165, 32, 0.3);
+    }
+
+    .enhanced-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.6s;
+    }
+
+    .enhanced-btn:hover::before {
+        left: 100%;
+    }
+
+    .enhanced-btn:hover {
+        background: linear-gradient(45deg, #B8860B, #DAA520);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(218, 165, 32, 0.4);
+    }
+
+    .features-section {
+        margin-top: 60px;
+        text-align: center;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 30px;
+        margin-top: 40px;
+    }
+
+    .feature-item {
+        background: rgba(255, 255, 255, 0.8);
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(139, 69, 19, 0.1);
+        transition: transform 0.3s ease;
+    }
+
+    .feature-item:hover {
+        transform: translateY(-5px);
+    }
+
+    .feature-icon {
+        font-size: 2.5em;
+        margin-bottom: 15px;
+        display: block;
+    }
+
+    .feature-item h4 {
+        color: #8B4513;
+        margin-bottom: 10px;
+        font-size: 1.2em;
+    }
+
+    .feature-item p {
+        color: #666;
+        font-size: 0.95em;
+        line-height: 1.5;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes glow {
+        from {
+            filter: drop-shadow(0 0 5px rgba(218, 165, 32, 0.3));
+        }
+        to {
+            filter: drop-shadow(0 0 20px rgba(218, 165, 32, 0.6));
+        }
+    }
+
+    @keyframes bounce {
+        0%, 20%, 53%, 80%, 100% {
+            transform: translateY(0);
+        }
+        40%, 43% {
+            transform: translateY(-10px);
+        }
+        70% {
+            transform: translateY(-5px);
+        }
+        90% {
+            transform: translateY(-2px);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .hero-section h1 {
+            font-size: 2.5em;
+        }
+        
+        .access-options {
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        
+        .portal-card {
+            padding: 40px 30px;
+        }
+        
+        .access-card {
+            padding: 30px 20px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .homepage-container {
+            padding: 15px;
+        }
+        
+        .hero-section h1 {
+            font-size: 2em;
+        }
+        
+        .hero-section p {
+            font-size: 1.1em;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="homepage-container">
+    <div class="hero-section">
+        <h1>🗳️ Student Election System</h1>
+        <p>Secure, Transparent, and Democratic Voting Platform</p>
+    </div>
+    
+    <div class="portal-card">
+        <h2 class="welcome-title">Welcome to the Election Portal</h2>
+        
+        <div class="access-options">
+            <div class="access-card">
+                <span class="access-icon">👨‍💼</span>
+                <h3>Administrator</h3>
+                <p>Manage elections, students, and candidates with comprehensive administrative tools</p>
+                <a href="/admin_login" class="enhanced-btn">Admin Login</a>
+            </div>
+            
+            <div class="access-card">
+                <span class="access-icon">🎓</span>
+                <h3>Student</h3>
+                <p>Cast your vote securely and make your voice heard in the democratic process</p>
+                <a href="/student_login" class="enhanced-btn">Student Login</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="features-section">
+        <h2 style="color: #8B4513; font-size: 2em; margin-bottom: 20px;">Why Choose Our Platform?</h2>
+        <div class="features-grid">
+            <div class="feature-item">
+                <span class="feature-icon">🔒</span>
+                <h4>Secure Voting</h4>
+                <p>End-to-end encryption ensures your vote remains private and secure</p>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">📊</span>
+                <h4>Real-time Results</h4>
+                <p>Live vote counting and transparent result reporting</p>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">📱</span>
+                <h4>Mobile Friendly</h4>
+                <p>Vote from anywhere using your smartphone or tablet</p>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">✅</span>
+                <h4>Verified Identity</h4>
+                <p>Student ID verification prevents fraud and duplicate voting</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
