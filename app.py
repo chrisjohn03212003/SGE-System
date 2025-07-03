@@ -21,7 +21,7 @@ def initialize_firebase():
     else:
         # For local development - use the local JSON file
         cred = credentials.Certificate(
-            'sge-system-36ce2-firebase-adminsdk-fbsvc-ae23d37096.json')
+            'sge-system-18570-firebase-adminsdk-fbsvc-28bbdc64ba.json')
 
     if not firebase_admin._apps:
         firebase_admin.initialize_app(cred)
@@ -117,15 +117,14 @@ def api_student_login():
             f"Password match: {stored_password_hash == entered_password_hash}")
 
         if stored_password_hash == entered_password_hash:
-           # ✅ Clear any previous session data first
-session.clear()
-
-# ✅ Set ONLY student session data
-session['student_id'] = student_id
-session['student_name'] = student_data.get('name')
-session['student_doc_id'] = student_doc.id
-session['has_voted'] = student_data.get('has_voted', False)
-
+            # Password matches - set ONLY student session data
+            session.clear()
+            
+            session['student_id'] = student_id
+            session['student_name'] = student_data.get('name')
+            session['student_doc_id'] = student_doc.id
+            session['has_voted'] = student_data.get('has_voted', False)
+            # DO NOT set session['admin'] = True here!
 
             logger.debug(
                 f"Login successful for student: {student_data.get('name')}")
