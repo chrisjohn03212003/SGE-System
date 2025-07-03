@@ -117,12 +117,15 @@ def api_student_login():
             f"Password match: {stored_password_hash == entered_password_hash}")
 
         if stored_password_hash == entered_password_hash:
-            # Password matches - set ONLY student session data
-            session['student_id'] = student_id
-            session['student_name'] = student_data.get('name')
-            session['student_doc_id'] = student_doc.id
-            session['has_voted'] = student_data.get('has_voted', False)
-            # DO NOT set session['admin'] = True here!
+           # ✅ Clear any previous session data first
+session.clear()
+
+# ✅ Set ONLY student session data
+session['student_id'] = student_id
+session['student_name'] = student_data.get('name')
+session['student_doc_id'] = student_doc.id
+session['has_voted'] = student_data.get('has_voted', False)
+
 
             logger.debug(
                 f"Login successful for student: {student_data.get('name')}")
