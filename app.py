@@ -118,7 +118,6 @@ def api_student_login():
 
         if stored_password_hash == entered_password_hash:
             # Password matches - set ONLY student session data
-            session.clear()
             
             session['student_id'] = student_id
             session['student_name'] = student_data.get('name')
